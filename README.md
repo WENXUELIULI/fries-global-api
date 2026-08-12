@@ -67,3 +67,25 @@ curl http://127.0.0.1:3001/health
 切勿将 `ADMIN_ACCESS.txt` 或 `.private/` 提交到公开的 Web 仓库。
 
 可选环境变量见 `.env.example`：`DJANGO_SECRET_KEY`、`DJANGO_DEBUG`、`DJANGO_ALLOWED_HOSTS`。
+
+## 生产启动（反向代理后）
+
+本地开发继续用 `runserver`。部署到服务器时关闭 DEBUG，并设置密钥与主机：
+
+```powershell
+# Windows（waitress）
+$env:DJANGO_DEBUG="false"
+$env:DJANGO_SECRET_KEY="请换成足够长的随机串"
+$env:DJANGO_ALLOWED_HOSTS="127.0.0.1,localhost,your.domain"
+.\.venv\Scripts\python -m waitress --listen=127.0.0.1:3001 config.wsgi:application
+```
+
+```bash
+# Linux（gunicorn）
+export DJANGO_DEBUG=false
+export DJANGO_SECRET_KEY='请换成足够长的随机串'
+export DJANGO_ALLOWED_HOSTS='127.0.0.1,localhost,your.domain'
+.venv/bin/gunicorn -b 127.0.0.1:3001 config.wsgi:application
+```
+
+对外仍建议由 Nginx / Caddy / Next 同源反代暴露，浏览器不直连 3001。

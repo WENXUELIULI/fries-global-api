@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from apps.analytics.store import get_analytics_summary, record_analytics_event
+from apps.analytics.store import country_name, get_analytics_summary, record_analytics_event
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -48,6 +48,7 @@ def test_records_visit_and_returns_summary_shape(analytics_initialized):
             {
                 "user-agent": "pytest",
                 "cf-connecting-ip": "1.2.3.4",
+                "cf-ipcountry": "US",
             }
         ),
         path="/en",
@@ -61,3 +62,11 @@ def test_records_visit_and_returns_summary_shape(analytics_initialized):
     assert "hourly" in summary
     assert summary["views24h"] >= 1
     assert len(summary["hourly"]) == 24
+    assert all(item["label"] and len(item["label"]) == 5 for item in summary["hourly"])
+    assert any("United States" in item["label"] for item in summary["topCountries"])
+
+
+def test_country_name_matches_english_display():
+    assert country_name("XX") == "Unknown"
+    assert country_name("US") == "United States"
+    assert country_name("CN") == "China"

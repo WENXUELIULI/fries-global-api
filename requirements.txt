@@ -1,5 +1,8 @@
 Django>=5.0,<6
 djangorestframework>=3.15
 cryptography>=42.0
+pycountry>=24.0
+waitress>=3.0
+gunicorn>=22.0; platform_system != "Windows"
 pytest>=8.0
 pytest-django>=4.8

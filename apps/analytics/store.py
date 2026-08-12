@@ -336,7 +336,21 @@ def _ranked(
 def country_name(code: str) -> str:
     if code == "XX":
         return "Unknown"
-    return code
+    try:
+        import pycountry
+
+        country = pycountry.countries.get(alpha_2=code)
+        return country.name if country else code
+    except Exception:
+        return code
+
+
+def _hourly_label(start_ms: int) -> str:
+    """对齐 Hono：toLocaleTimeString('zh-CN', hour12:false) 的 HH:MM 形态（上海时区，结果确定）。"""
+    from zoneinfo import ZoneInfo
+
+    label_dt = datetime.fromtimestamp(start_ms / 1000, tz=ZoneInfo("Asia/Shanghai"))
+    return label_dt.strftime("%H:%M")
 
 
 def get_analytics_summary() -> dict[str, Any]:
@@ -364,10 +378,9 @@ def get_analytics_summary() -> dict[str, Any]:
             for event in visits
             if start <= _parse_iso_ms(event.get("at", "")) < end
         ]
-        label_dt = datetime.fromtimestamp(start / 1000, tz=timezone.utc)
         hourly.append(
             {
-                "label": label_dt.strftime("%H:%M"),
+                "label": _hourly_label(start),
                 "views": len(bucket),
                 "visitors": len({event.get("deviceId") for event in bucket}),
             }
