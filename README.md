@@ -1,8 +1,10 @@
 # fries-global-api
 
-薯条出海官网后端 API（Hono）。默认监听 **3001** 端口（可用环境变量 `PORT` 覆盖）。
+薯条出海官网后端 API（**Django + Django REST framework**）。默认监听 **3001** 端口。
 
 前端仓库（`fries-global-website`）在开发与生产中会将同源的 `/api/*`、`/admin/api/*` 转发到本服务。
+
+> Hono/Node 实现已归档在 Git tag `legacy-hono`，可随时检出回滚。
 
 ## 本地开发（双仓库）
 
@@ -10,9 +12,11 @@
 
 ```powershell
 cd E:\Project\fries-global-api
-npm install
-npm run admin:init   # 仅首次：生成 .private/admin-auth.json 与 ADMIN_ACCESS.txt
-npm run dev          # http://127.0.0.1:3001
+py -3 -m venv .venv          # 仅首次
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+.\.venv\Scripts\python scripts\init_admin.py   # 仅首次：生成 .private/ 与 ADMIN_ACCESS.txt
+.\.venv\Scripts\python manage.py runserver 127.0.0.1:3001
 ```
 
 再在另一个终端：
@@ -28,6 +32,12 @@ npm run dev          # http://127.0.0.1:3000
 ```powershell
 curl http://127.0.0.1:3001/health
 # {"ok":true}
+```
+
+## 测试
+
+```powershell
+.\.venv\Scripts\python -m pytest -q
 ```
 
 ## 路由
@@ -46,10 +56,12 @@ curl http://127.0.0.1:3001/health
 
 ## 管理员鉴权（经 Web 反向代理时）
 
-登录/登出使用 `validSameOriginRequest`：`Origin` 的主机名须与 `x-forwarded-host` 或 `host` 一致。  
+登录/登出使用同源校验：`Origin` 的主机名须与 `x-forwarded-host` 或 `host` 一致。  
 当 Next.js 将管理端 API 转发到本服务时，Web 层必须转发**对外主机名**（例如 `127.0.0.1:3000`）到 `host` / `x-forwarded-host`，而不是内部 API 主机（`127.0.0.1:3001`）。
 
-## 密钥
+会话 Cookie：`fries_admin_session`（HttpOnly，SameSite=Strict，Path=/admin，约 4 小时）。
 
-全部凭据与加密密钥存放在 `.private/`（已 gitignore）。  
+## 密钥与存储
+
+全部凭据与加密密钥存放在 `.private/`（已 gitignore）。业务数据不入库，仅用 SQLite 满足 Django 默认配置。  
 切勿将 `ADMIN_ACCESS.txt` 或 `.private/` 提交到公开的 Web 仓库。
