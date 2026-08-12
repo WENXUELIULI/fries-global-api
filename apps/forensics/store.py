@@ -459,7 +459,10 @@ def get_forensic_report(
                     event_ms = _parse_iso_ms(event.get("at", ""))
                     if event_ms >= cutoff_ms:
                         events.append(event)
-                except (json.JSONDecodeError, KeyError, ValueError, TypeError):
+                except (json.JSONDecodeError, KeyError, ValueError, TypeError, OSError):
+                    errors += 1
+                except Exception:
+                    # 密钥轮换/损坏行：计入错误并跳过，避免拖垮 summary
                     errors += 1
 
     events.sort(key=lambda item: _parse_iso_ms(item.get("at", "")), reverse=True)

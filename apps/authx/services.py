@@ -96,3 +96,27 @@ def verify_admin_session(token: str | None) -> bool:
         return False
     expected = _hmac_base64url(config["sessionSecret"], payload)
     return _safe_equal(signature, expected)
+
+
+def request_is_https(request) -> bool:
+    forwarded = (request.META.get("HTTP_X_FORWARDED_PROTO") or "").split(",")[0].strip()
+    return forwarded == "https" or request.is_secure()
+
+
+def valid_same_origin_request(request) -> bool:
+    origin = request.META.get("HTTP_ORIGIN") or ""
+    host = (
+        request.META.get("HTTP_X_FORWARDED_HOST")
+        or request.META.get("HTTP_HOST")
+        or ""
+    ).lower()
+    if not origin or not host:
+        return False
+    if (request.META.get("HTTP_SEC_FETCH_SITE") or "").lower() == "cross-site":
+        return False
+    try:
+        from urllib.parse import urlparse
+
+        return urlparse(origin).netloc.lower() == host
+    except Exception:
+        return False
