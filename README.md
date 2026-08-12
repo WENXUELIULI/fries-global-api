@@ -65,3 +65,5 @@ curl http://127.0.0.1:3001/health
 
 全部凭据与加密密钥存放在 `.private/`（已 gitignore）。业务数据不入库，仅用 SQLite 满足 Django 默认配置。  
 切勿将 `ADMIN_ACCESS.txt` 或 `.private/` 提交到公开的 Web 仓库。
+
+可选环境变量见 `.env.example`：`DJANGO_SECRET_KEY`、`DJANGO_DEBUG`、`DJANGO_ALLOWED_HOSTS`。

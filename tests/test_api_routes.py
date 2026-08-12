@@ -72,3 +72,64 @@ def test_admin_summary_returns_json_with_session(isolated_private):
     assert response.status_code == 200
     body = response.json()
     assert "generatedAt" in body
+
+
+def _read_access(isolated_private: Path) -> tuple[str, str]:
+    text = (isolated_private / "ADMIN_ACCESS.txt").read_text(encoding="utf-8")
+    username = ""
+    password = ""
+    for line in text.splitlines():
+        if line.startswith("Username:"):
+            username = line.split(":", 1)[1].strip()
+        if line.startswith("Password:"):
+            password = line.split(":", 1)[1].strip()
+    return username, password
+
+
+def test_admin_login_rejects_cross_origin(isolated_private):
+    client = Client()
+    response = client.post(
+        "/admin/api/login",
+        data={"username": "x", "password": "y", "website": ""},
+        HTTP_ORIGIN="http://evil.example",
+        HTTP_HOST="127.0.0.1:3000",
+    )
+    assert response.status_code == 403
+
+
+def test_admin_login_success_sets_cookie(isolated_private):
+    username, password = _read_access(isolated_private)
+    client = Client()
+    response = client.post(
+        "/admin/api/login",
+        data={"username": username, "password": password, "website": ""},
+        HTTP_ORIGIN="http://127.0.0.1:3000",
+        HTTP_HOST="127.0.0.1:3000",
+    )
+    assert response.status_code == 303
+    assert response["Location"] == "/admin"
+    assert ADMIN_COOKIE in response.cookies
+
+
+def test_admin_login_bad_credentials_redirects(isolated_private):
+    client = Client()
+    response = client.post(
+        "/admin/api/login",
+        data={"username": "nope", "password": "nope", "website": ""},
+        HTTP_ORIGIN="http://127.0.0.1:3000",
+        HTTP_HOST="127.0.0.1:3000",
+    )
+    assert response.status_code == 303
+    assert "error=1" in response["Location"]
+
+
+def test_admin_logout_clears_cookie(isolated_private):
+    client = Client()
+    response = client.post(
+        "/admin/api/logout",
+        HTTP_ORIGIN="http://127.0.0.1:3000",
+        HTTP_HOST="127.0.0.1:3000",
+    )
+    assert response.status_code == 303
+    assert "signedout=1" in response["Location"]
+    assert response.cookies[ADMIN_COOKIE]["max-age"] == 0
