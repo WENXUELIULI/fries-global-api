@@ -34,11 +34,16 @@ curl http://127.0.0.1:3001/health
 # {"ok":true}
 ```
 
-## 测试
+## 测试（TDD）
+
+本仓采用 **先写失败测试 → 再写最小实现**。测试框架为 pytest + pytest-django：
 
 ```powershell
 .\.venv\Scripts\python -m pytest -q
+.\.venv\Scripts\python -m pytest -q --lf   # 只重跑上次失败
 ```
+
+新增或修改接口/存储逻辑时，先在 `tests/` 写用例并看到失败，再改 `apps/` 或 `config/`。
 
 ## 路由
 

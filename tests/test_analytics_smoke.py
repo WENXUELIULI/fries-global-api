@@ -1,14 +1,4 @@
-import os
-import shutil
-import subprocess
-import sys
-from pathlib import Path
-
-import pytest
-
 from apps.analytics.store import country_name, get_analytics_summary, record_analytics_event
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 class FakeHeaders:
@@ -24,25 +14,7 @@ class FakeHeaders:
         return key.lower() in self._data
 
 
-@pytest.fixture
-def analytics_initialized(tmp_path, settings):
-    settings.BASE_DIR = tmp_path
-    private = tmp_path / ".private"
-    access = tmp_path / "ADMIN_ACCESS.txt"
-    if private.exists():
-        shutil.rmtree(private)
-    access.unlink(missing_ok=True)
-    env = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT)}
-    subprocess.run(
-        [sys.executable, str(PROJECT_ROOT / "scripts" / "init_admin.py")],
-        cwd=tmp_path,
-        check=True,
-        env=env,
-    )
-    yield tmp_path
-
-
-def test_records_visit_and_returns_summary_shape(analytics_initialized):
+def test_records_visit_and_returns_summary_shape(isolated_private):
     record_analytics_event(
         headers=FakeHeaders(
             {

@@ -1,0 +1,13 @@
+---
+description: fries-global-api 强制 TDD —— 先红灯再实现
+alwaysApply: true
+---
+
+# TDD（fries-global-api）
+
+写生产代码前必须先有失败测试。
+
+- 测试：`tests/test_*.py`
+- 命令：`.\.venv\Scripts\python -m pytest -q`
+
+流程：RED → GREEN → REFACTOR。共享夹具见 `tests/conftest.py`（`isolated_private`）。

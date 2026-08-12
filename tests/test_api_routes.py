@@ -1,33 +1,8 @@
-import os
-import shutil
-import subprocess
-import sys
 from pathlib import Path
 
-import pytest
 from django.test import Client
 
 from apps.authx.services import ADMIN_COOKIE, create_admin_session
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-
-
-@pytest.fixture()
-def isolated_private(tmp_path, settings):
-    settings.BASE_DIR = tmp_path
-    private = tmp_path / ".private"
-    access = tmp_path / "ADMIN_ACCESS.txt"
-    if private.exists():
-        shutil.rmtree(private)
-    access.unlink(missing_ok=True)
-    env = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT)}
-    subprocess.run(
-        [sys.executable, str(PROJECT_ROOT / "scripts" / "init_admin.py")],
-        cwd=tmp_path,
-        check=True,
-        env=env,
-    )
-    yield tmp_path
 
 
 def test_presence_returns_204(isolated_private):
@@ -72,6 +47,20 @@ def test_admin_summary_returns_json_with_session(isolated_private):
     assert response.status_code == 200
     body = response.json()
     assert "generatedAt" in body
+
+
+def test_admin_session_rejects_missing_cookie(isolated_private):
+    client = Client()
+    response = client.get("/admin/api/session")
+    assert response.status_code == 401
+
+
+def test_admin_session_accepts_valid_cookie(isolated_private):
+    token = create_admin_session()
+    client = Client()
+    client.cookies[ADMIN_COOKIE] = token
+    response = client.get("/admin/api/session")
+    assert response.status_code == 204
 
 
 def _read_access(isolated_private: Path) -> tuple[str, str]:
