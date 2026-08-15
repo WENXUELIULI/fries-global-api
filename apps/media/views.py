@@ -120,11 +120,11 @@ def admin_site_image_upload(request: HttpRequest, slot_key: str):
     if not uploaded:
         return _json({"ok": False, "error": "invalid"}, status=400)
     if getattr(uploaded, "size", 0) > IMAGE_MAX_BYTES:
-        return _json({"ok": False, "error": "too-large"}, status=400)
+        return _json({"ok": False, "error": "too-large"}, status=413)
 
     data = uploaded.read(IMAGE_MAX_BYTES + 1)
     if len(data) > IMAGE_MAX_BYTES:
-        return _json({"ok": False, "error": "too-large"}, status=400)
+        return _json({"ok": False, "error": "too-large"}, status=413)
     try:
         ext, content_type = detect_site_image(data)
     except MediaImageError as exc:
