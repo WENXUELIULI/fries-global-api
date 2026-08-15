@@ -20,7 +20,7 @@ from apps.authx.views import (
     site_register,
     site_avatar,
 )
-from apps.engage.views import engage_ingest
+from apps.engage.views import engage_ingest, engagement_admin_summary
 from apps.media.views import (
     admin_site_image_reset,
     admin_site_image_upload,
@@ -48,6 +48,7 @@ urlpatterns = [
     path("admin/api/logout", admin_logout),
     path("admin/api/session", AdminSessionView.as_view()),
     path("admin/api/summary", AdminSummaryView.as_view()),
+    path("admin/api/engagement", engagement_admin_summary),
     path("admin/api/export", AdminExportView.as_view()),
     path("admin/api/forensics", AdminForensicsView.as_view()),
     path("admin/api/site-images", admin_site_images_list),

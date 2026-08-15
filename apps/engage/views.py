@@ -5,13 +5,15 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
+from apps.authx.services import ADMIN_COOKIE, verify_admin_session
 from apps.engage.models import EngageEvent
 from apps.engage.sections import SECTION_IDS
+from apps.engage.summary import engagement_summary
 
 ALLOWED_KINDS = frozenset({"section_view", "section_leave", "click"})
 MAX_BODY_BYTES = 64 * 1024
@@ -118,3 +120,14 @@ def engage_ingest(request: HttpRequest):
 
     EngageEvent.objects.bulk_create([EngageEvent(**row) for row in parsed])
     return HttpResponse(status=204, headers={"Cache-Control": "no-store, max-age=0"})
+
+
+@require_GET
+def engagement_admin_summary(request: HttpRequest):
+    if not verify_admin_session(request.COOKIES.get(ADMIN_COOKIE)):
+        return HttpResponse("Unauthorized", status=401, headers={"Cache-Control": "no-store"})
+    window = (request.GET.get("window") or "24h").strip() or "24h"
+    payload = engagement_summary(window=window)
+    response = JsonResponse(payload)
+    response["Cache-Control"] = "private, no-store, max-age=0"
+    return response
