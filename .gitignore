@@ -10,3 +10,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 db.sqlite3
+
+# Media uploads (keep site dir placeholder)
+/media/site/*
+!media/site/.gitkeep
