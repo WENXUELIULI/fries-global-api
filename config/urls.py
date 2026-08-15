@@ -20,6 +20,7 @@ from apps.authx.views import (
     site_register,
     site_avatar,
 )
+from apps.engage.views import engage_ingest
 from apps.media.views import (
     admin_site_image_reset,
     admin_site_image_upload,
@@ -33,6 +34,7 @@ urlpatterns = [
     path("health", health),
     path("api/presence", PresenceView.as_view()),
     path("api/ingest", IngestView.as_view()),
+    path("api/engage", engage_ingest),
     path("api/site-images", public_site_images_list),
     path("api/site-images/<str:slot_key>", public_site_image),
     path("api/auth/login", site_login),
