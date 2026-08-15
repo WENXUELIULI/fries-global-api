@@ -57,6 +57,18 @@ def _hmac_base64url(secret: str, payload: str) -> str:
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
 
 
+def hash_secret(password: str, salt: str) -> str:
+    return _scrypt_hex(password, salt)
+
+
+def sign_payload(secret: str, payload: str) -> str:
+    return _hmac_base64url(secret, payload)
+
+
+def secrets_equal(left: str, right: str) -> bool:
+    return _safe_equal(left, right)
+
+
 def verify_credentials(username: str, password: str) -> bool:
     config = _load_config()
     if not config or len(username) > 80 or len(password) > 256:

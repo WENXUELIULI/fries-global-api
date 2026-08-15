@@ -58,13 +58,25 @@ curl http://127.0.0.1:3001/health
 | `/admin/api/summary` | GET | 仪表盘汇总 JSON |
 | `/admin/api/export` | GET | CSV 导出 |
 | `/admin/api/forensics` | GET | 取证证据下载 |
+| `/api/auth/login` | POST | 站点登录；管理员账号返回 `{ role: admin, next: /admin }` |
+| `/api/auth/logout` | POST | 站点登出 |
+| `/api/auth/register` | POST | 公开注册（限流、蜜罐；可被后台关闭） |
+| `/api/auth/session` | GET | 站点会话与资料（200 JSON 或 401） |
+| `/api/auth/settings` | GET | `{ registrationEnabled }` |
+| `/api/auth/profile` | GET / POST | 读取或更新个人资料（头像 jpeg/png/webp ≤256KB 且边长 ≤1024px；姓名/密码/手机/邮箱/地址） |
+| `/api/auth/avatar/<id>` | GET | 用户头像 |
+| `/admin/api/users` | GET / POST | 列出或创建站点用户（需管理员会话） |
+| `/admin/api/users/settings` | POST | 开启或禁止公开注册 |
+| `/admin/api/users/<id>` | POST | 更新站点用户（启用/密码/备注） |
+| `/admin/api/users/<id>/delete` | POST | 删除站点用户 |
 
 ## 管理员鉴权（经 Web 反向代理时）
 
 登录/登出使用同源校验：`Origin` 的主机名须与 `x-forwarded-host` 或 `host` 一致。  
 当 Next.js 将管理端 API 转发到本服务时，Web 层必须转发**对外主机名**（例如 `127.0.0.1:3000`）到 `host` / `x-forwarded-host`，而不是内部 API 主机（`127.0.0.1:3001`）。
 
-会话 Cookie：`fries_admin_session`（HttpOnly，SameSite=Strict，Path=/admin，约 4 小时）。
+管理员会话 Cookie：`fries_admin_session`（HttpOnly，SameSite=Strict，Path=/admin，约 4 小时）。  
+站点用户会话 Cookie：`fries_user_session`（HttpOnly，SameSite=Strict，Path=/，约 4 小时）。官网可公开注册，同一来源 10 分钟内不能重复注册；管理员可在后台关闭公开注册。
 
 ## 密钥与存储
 
