@@ -1,4 +1,3 @@
-import pytest
 from django.conf import settings
 
 from apps.media.slots import SLOT_KEYS, default_public_path
@@ -21,13 +20,6 @@ EXPECTED_SLOT_DEFAULTS = {
 }
 
 
-@pytest.mark.django_db
-def test_slot_keys_include_hero():
-    assert "hero.backdrop" in SLOT_KEYS
-    assert default_public_path("hero.backdrop") == "/hero-port-global.png"
-
-
-@pytest.mark.django_db
 def test_all_design_slots_and_defaults():
     for slot_key, expected_path in EXPECTED_SLOT_DEFAULTS.items():
         assert slot_key in SLOT_KEYS
