@@ -3,6 +3,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
+from django.core.management import call_command
 from django.test import Client
 from django.utils import timezone as dj_timezone
 
@@ -202,3 +203,23 @@ def test_engagement_summary_aggregates(isolated_private):
         "targetId": "primary-cta",
         "count": 2,
     }
+
+
+@pytest.mark.django_db
+def test_purge_engage_deletes_events_older_than_90_days():
+    now = dj_timezone.now()
+    old = EngageEvent.objects.create(
+        at=now - timedelta(days=91),
+        kind="click",
+        section_id="hero",
+    )
+    recent = EngageEvent.objects.create(
+        at=now,
+        kind="click",
+        section_id="cta",
+    )
+
+    call_command("purge_engage")
+
+    assert not EngageEvent.objects.filter(pk=old.pk).exists()
+    assert EngageEvent.objects.filter(pk=recent.pk).exists()

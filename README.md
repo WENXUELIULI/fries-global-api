@@ -69,6 +69,13 @@ curl http://127.0.0.1:3001/health
 | `/admin/api/users/settings` | POST | 开启或禁止公开注册 |
 | `/admin/api/users/<id>` | POST | 更新站点用户（启用/密码/备注） |
 | `/admin/api/users/<id>/delete` | POST | 删除站点用户 |
+| `/api/site-images` | GET | 公开首页槽位配置 |
+| `/api/site-images/<slotKey>` | GET | 自定义槽位图片 |
+| `/admin/api/site-images` | GET | Admin 槽位列表 |
+| `/admin/api/site-images/<slotKey>` | POST | Admin 上传替换 |
+| `/admin/api/site-images/<slotKey>/reset` | POST | 恢复默认图 |
+| `/api/engage` | POST | 区块停留/点击事件（204） |
+| `/admin/api/engagement` | GET | Admin 互动汇总 |
 
 ## 管理员鉴权（经 Web 反向代理时）
 
@@ -80,7 +87,9 @@ curl http://127.0.0.1:3001/health
 
 ## 密钥与存储
 
-全部凭据与加密密钥存放在 `.private/`（已 gitignore）。业务数据不入库，仅用 SQLite 满足 Django 默认配置。  
+全部凭据与加密密钥存放在 `.private/`（已 gitignore）；访问/安全分析文件也仍在 `.private/`。  
+SQLite 现用于 Django 默认配置，并存储 `SiteImageSlot`（首页图片槽位元数据）与 `EngageEvent`（互动事件）。自定义首页图片写入 `media/site/`（已 gitignore，部署需持久化该目录）。  
+可用 `python manage.py purge_engage` 删除约 90 天前的互动事件。  
 切勿将 `ADMIN_ACCESS.txt` 或 `.private/` 提交到公开的 Web 仓库。
 
 可选环境变量见 `.env.example`：`DJANGO_SECRET_KEY`、`DJANGO_DEBUG`、`DJANGO_ALLOWED_HOSTS`。
