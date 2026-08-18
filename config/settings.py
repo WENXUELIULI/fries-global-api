@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "apps.authx",
     "apps.media",
     "apps.engage",
+    "apps.catalog",
 ]
 
 MIDDLEWARE = [

@@ -14,3 +14,6 @@ db.sqlite3
 # Media uploads (keep site dir placeholder)
 /media/site/*
 !media/site/.gitkeep
+
+# Media uploads (catalog)
+/media/catalog/
