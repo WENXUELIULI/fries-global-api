@@ -10,8 +10,8 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.authx.services import ADMIN_COOKIE, valid_same_origin_request, verify_admin_session
 from apps.media.models import SiteImageSlot
-from apps.media.slots import SLOT_KEYS, default_public_path
-from apps.media.validators import IMAGE_MAX_BYTES, MediaImageError, detect_site_image
+from apps.media.slots import NO_EDGE_LIMIT_SLOTS, SLOT_KEYS, default_public_path
+from apps.media.validators import IMAGE_MAX_BYTES, IMAGE_MAX_EDGE, MediaImageError, detect_site_image
 
 
 def _json(payload: dict, *, status: int = 200) -> HttpResponse:
@@ -125,8 +125,9 @@ def admin_site_image_upload(request: HttpRequest, slot_key: str):
     data = uploaded.read(IMAGE_MAX_BYTES + 1)
     if len(data) > IMAGE_MAX_BYTES:
         return _json({"ok": False, "error": "too-large"}, status=413)
+    max_edge = None if slot_key in NO_EDGE_LIMIT_SLOTS else IMAGE_MAX_EDGE
     try:
-        ext, content_type = detect_site_image(data)
+        ext, content_type = detect_site_image(data, max_edge=max_edge)
     except MediaImageError as exc:
         status = 413 if exc.code == "too-large" else 400
         return _json({"ok": False, "error": exc.code}, status=status)

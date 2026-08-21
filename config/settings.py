@@ -64,4 +64,6 @@ USE_TZ = True
 STATIC_URL = "static/"
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "/media/"
+# 图片上传上限 20MB;框架请求体上限需大于业务限制 IMAGE_MAX_BYTES,否则大文件在到达视图前即被拒
+DATA_UPLOAD_MAX_MEMORY_SIZE = 21 * 1024 * 1024
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

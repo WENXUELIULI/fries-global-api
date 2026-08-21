@@ -23,9 +23,11 @@ def test_media_root_and_apps_registered():
 EXPECTED_SLOT_DEFAULTS = {
     "hero.backdrop": "/hero-port-global.png",
     "brand.symbol": "/brand-symbol.png",
-    "categories.mascot_sheet": "/category-mascots.png",
-    "services.case_a": "/case-industrial-tech.png",
-    "services.case_b": "/case-manufacturing.png",
+    "services.case_1": "/case-industrial-tech.png",
+    "services.case_2": "/case-manufacturing.png",
+    "services.case_3": "/case-industrial-tech.png",
+    "services.case_4": "/case-manufacturing.png",
+    "quality.backdrop": None,
     "cta.visual": None,
 }
 
@@ -47,7 +49,7 @@ def test_detect_site_image_accepts_small_png():
     assert detect_site_image(_png_with_size(32, 24)) == ("png", "image/png")
 
 
-def test_detect_site_image_rejects_over_2mb():
+def test_detect_site_image_rejects_over_20mb():
     data = b"\x89PNG\r\n\x1a\n" + b"\x00" * IMAGE_MAX_BYTES
     with pytest.raises(MediaImageError) as exc:
         detect_site_image(data)
@@ -64,6 +66,10 @@ def test_detect_site_image_rejects_declared_dimensions_over_4096():
     with pytest.raises(MediaImageError) as exc:
         detect_site_image(_png_with_size(4097, 100))
     assert exc.value.code == "too-large"
+
+
+def test_detect_site_image_allows_large_edge_when_unlimited():
+    assert detect_site_image(_png_with_size(6000, 4000), max_edge=None) == ("png", "image/png")
 
 
 def _origin_headers() -> dict[str, str]:

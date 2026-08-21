@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-IMAGE_MAX_BYTES = 2 * 1024 * 1024
+IMAGE_MAX_BYTES = 20 * 1024 * 1024
 IMAGE_MAX_EDGE = 4096
 
 
@@ -52,7 +52,7 @@ def _webp_size(data: bytes) -> tuple[int, int] | None:
     return None
 
 
-def detect_site_image(data: bytes) -> tuple[str, str]:
+def detect_site_image(data: bytes, max_edge: int | None = IMAGE_MAX_EDGE) -> tuple[str, str]:
     if not data or len(data) < 24:
         raise MediaImageError("invalid")
     if len(data) > IMAGE_MAX_BYTES:
@@ -71,6 +71,8 @@ def detect_site_image(data: bytes) -> tuple[str, str]:
     if not kind or not size:
         raise MediaImageError("invalid")
     width, height = size
-    if width < 1 or height < 1 or width > IMAGE_MAX_EDGE or height > IMAGE_MAX_EDGE:
+    if width < 1 or height < 1:
+        raise MediaImageError("invalid")
+    if max_edge is not None and (width > max_edge or height > max_edge):
         raise MediaImageError("too-large")
     return kind

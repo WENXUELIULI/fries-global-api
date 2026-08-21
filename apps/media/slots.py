@@ -15,6 +15,9 @@ SLOT_DEFAULTS: dict[str, str | None] = {
 
 SLOT_KEYS: frozenset[str] = frozenset(SLOT_DEFAULTS)
 
+# 背景图不设边长上限(仅受文件大小约束);其余 slot 仍限 IMAGE_MAX_EDGE
+NO_EDGE_LIMIT_SLOTS: frozenset[str] = frozenset({"hero.backdrop", "quality.backdrop"})
+
 
 def default_public_path(slot_key: str) -> str | None:
     """Return the site `public/` fallback path for a slot, or None if optional/absent."""
