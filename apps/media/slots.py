@@ -5,9 +5,11 @@ from __future__ import annotations
 SLOT_DEFAULTS: dict[str, str | None] = {
     "hero.backdrop": "/hero-port-global.png",
     "brand.symbol": "/brand-symbol.png",
-    "categories.mascot_sheet": "/category-mascots.png",
-    "services.case_a": "/case-industrial-tech.png",
-    "services.case_b": "/case-manufacturing.png",
+    "services.case_1": "/case-industrial-tech.png",
+    "services.case_2": "/case-manufacturing.png",
+    "services.case_3": "/case-industrial-tech.png",
+    "services.case_4": "/case-manufacturing.png",
+    "quality.backdrop": None,  # optional; no public default — components may hide
     "cta.visual": None,  # optional; no public default — components may hide
 }
 

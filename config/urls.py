@@ -20,6 +20,14 @@ from apps.authx.views import (
     site_register,
     site_avatar,
 )
+from apps.catalog.views import (
+    admin_catalog_collection,
+    admin_catalog_delete,
+    admin_catalog_move,
+    admin_catalog_update,
+    public_catalog,
+    public_category_image,
+)
 from apps.engage.views import engage_ingest, engagement_admin_summary
 from apps.media.views import (
     admin_site_image_reset,
@@ -35,6 +43,8 @@ urlpatterns = [
     path("api/presence", PresenceView.as_view()),
     path("api/ingest", IngestView.as_view()),
     path("api/engage", engage_ingest),
+    path("api/catalog", public_catalog),
+    path("api/catalog/<int:category_id>/image", public_category_image),
     path("api/site-images", public_site_images_list),
     path("api/site-images/<str:slot_key>", public_site_image),
     path("api/auth/login", site_login),
@@ -49,6 +59,10 @@ urlpatterns = [
     path("admin/api/session", AdminSessionView.as_view()),
     path("admin/api/summary", AdminSummaryView.as_view()),
     path("admin/api/engagement", engagement_admin_summary),
+    path("admin/api/catalog", admin_catalog_collection),
+    path("admin/api/catalog/<int:category_id>/move", admin_catalog_move),
+    path("admin/api/catalog/<int:category_id>/delete", admin_catalog_delete),
+    path("admin/api/catalog/<int:category_id>", admin_catalog_update),
     path("admin/api/export", AdminExportView.as_view()),
     path("admin/api/forensics", AdminForensicsView.as_view()),
     path("admin/api/site-images", admin_site_images_list),
