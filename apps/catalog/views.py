@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from urllib.parse import urlparse
+
 from django.conf import settings
 from django.db.models import Max
 from django.http import FileResponse, HttpRequest, HttpResponse, HttpResponseRedirect
@@ -12,6 +14,27 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.authx.services import ADMIN_COOKIE, valid_same_origin_request, verify_admin_session
 from apps.catalog.models import ProductCategory
 from apps.media.validators import IMAGE_MAX_BYTES, MediaImageError, detect_site_image
+
+
+def _normalize_href(raw: str) -> str | None:
+    value = (raw or "").strip()
+    if not value:
+        return "#contact"
+    if len(value) > 500:
+        return None
+    if value.startswith("#"):
+        if any(ch in value for ch in " \n\r\t<>\"'"):
+            return None
+        return value
+    if value.startswith("/") and not value.startswith("//"):
+        return value
+    parsed = urlparse(value)
+    scheme = (parsed.scheme or "").lower()
+    if scheme == "mailto":
+        return value
+    if scheme in {"http", "https"} and parsed.netloc:
+        return value
+    return None
 
 
 def _json(payload: dict, *, status: int = 200) -> HttpResponse:
@@ -40,6 +63,7 @@ def _serialize(category: ProductCategory, *, include_admin: bool = False) -> dic
     item = {
         "id": category.id,
         "title": category.title,
+        "href": category.href or "#contact",
         "sortOrder": category.sort_order,
     }
     if category.image_path:
@@ -93,18 +117,16 @@ def admin_catalog_collection(request: HttpRequest):
         return HttpResponse("Forbidden", status=403)
 
     title = (request.POST.get("title") or "").strip()
-    if not title or len(title) > 120:
+    href = _normalize_href(request.POST.get("href") or "")
+    if not title or len(title) > 120 or href is None:
         return HttpResponseRedirect("/admin/catalog?error=invalid", status=303)
 
     max_order = ProductCategory.objects.aggregate(m=Max("sort_order"))["m"] or 0
-    category = ProductCategory.objects.create(title=title, sort_order=max_order + 1)
+    category = ProductCategory.objects.create(title=title, href=href, sort_order=max_order + 1)
 
-    uploaded = request.FILES.get("image") or request.FILES.get("file")
-    if uploaded:
-        err = _save_category_image(category, uploaded)
-        if err:
-            category.delete()
-            return HttpResponseRedirect(f"/admin/catalog?error={err}", status=303)
+    image_error = _save_uploaded_category_image(category, request)
+    if image_error:
+        return HttpResponseRedirect(f"/admin/catalog?created=1&error={image_error}", status=303)
 
     return HttpResponseRedirect("/admin/catalog?created=1", status=303)
 
@@ -129,13 +151,17 @@ def admin_catalog_update(request: HttpRequest, category_id: int):
             return HttpResponseRedirect("/admin/catalog?error=invalid", status=303)
         category.title = title
 
-    uploaded = request.FILES.get("image") or request.FILES.get("file")
-    if uploaded:
-        err = _save_category_image(category, uploaded)
-        if err:
-            return HttpResponseRedirect(f"/admin/catalog?error={err}", status=303)
+    if "href" in request.POST:
+        href = _normalize_href(request.POST.get("href") or "")
+        if href is None:
+            return HttpResponseRedirect("/admin/catalog?error=invalid", status=303)
+        category.href = href
+
+    image_error = _save_uploaded_category_image(category, request)
 
     category.save()
+    if image_error:
+        return HttpResponseRedirect(f"/admin/catalog?updated=1&error={image_error}", status=303)
     return HttpResponseRedirect("/admin/catalog?updated=1", status=303)
 
 
@@ -191,6 +217,25 @@ def admin_catalog_delete(request: HttpRequest, category_id: int):
             path.unlink(missing_ok=True)
     category.delete()
     return HttpResponseRedirect("/admin/catalog?deleted=1", status=303)
+
+
+def _public_image_error(code: str) -> str:
+    return "invalid_image" if code == "invalid" else code
+
+
+def _uploaded_image(request: HttpRequest):
+    uploaded = request.FILES.get("image") or request.FILES.get("file")
+    if not uploaded or getattr(uploaded, "size", 0) <= 0:
+        return None
+    return uploaded
+
+
+def _save_uploaded_category_image(category: ProductCategory, request: HttpRequest) -> str | None:
+    uploaded = _uploaded_image(request)
+    if not uploaded:
+        return None
+    err = _save_category_image(category, uploaded)
+    return _public_image_error(err) if err else None
 
 
 def _save_category_image(category: ProductCategory, uploaded) -> str | None:

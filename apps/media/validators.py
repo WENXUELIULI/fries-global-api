@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-IMAGE_MAX_BYTES = 2 * 1024 * 1024
-IMAGE_MAX_EDGE = 4096
+IMAGE_MAX_BYTES = 8 * 1024 * 1024
+IMAGE_MAX_EDGE = 8192
 
 
 class MediaImageError(ValueError):

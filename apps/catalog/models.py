@@ -3,6 +3,7 @@ from django.db import models
 
 class ProductCategory(models.Model):
     title = models.CharField(max_length=120)
+    href = models.CharField(max_length=500, blank=True, default="#contact")
     image_path = models.CharField(max_length=512, blank=True, default="")
     sort_order = models.PositiveIntegerField(default=0, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)

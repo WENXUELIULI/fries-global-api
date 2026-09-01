@@ -10,7 +10,7 @@ from django.test import Client
 from apps.authx.services import ADMIN_COOKIE, create_admin_session
 from apps.authx.users import USER_COOKIE, create_site_user
 from apps.media.slots import SLOT_KEYS, default_public_path
-from apps.media.validators import IMAGE_MAX_BYTES, MediaImageError, detect_site_image
+from apps.media.validators import IMAGE_MAX_BYTES, IMAGE_MAX_EDGE, MediaImageError, detect_site_image
 
 
 def test_media_root_and_apps_registered():
@@ -47,7 +47,7 @@ def test_detect_site_image_accepts_small_png():
     assert detect_site_image(_png_with_size(32, 24)) == ("png", "image/png")
 
 
-def test_detect_site_image_rejects_over_2mb():
+def test_detect_site_image_rejects_oversize_file():
     data = b"\x89PNG\r\n\x1a\n" + b"\x00" * IMAGE_MAX_BYTES
     with pytest.raises(MediaImageError) as exc:
         detect_site_image(data)
@@ -60,9 +60,9 @@ def test_detect_site_image_rejects_non_image():
     assert exc.value.code == "invalid"
 
 
-def test_detect_site_image_rejects_declared_dimensions_over_4096():
+def test_detect_site_image_rejects_declared_dimensions_over_limit():
     with pytest.raises(MediaImageError) as exc:
-        detect_site_image(_png_with_size(4097, 100))
+        detect_site_image(_png_with_size(IMAGE_MAX_EDGE + 1, 100))
     assert exc.value.code == "too-large"
 
 
