@@ -109,6 +109,28 @@ def test_admin_inquiries_list_and_csv(db, settings):
     assert b"Alex Petrov" in csv_response.content
 
 
+def test_admin_inquiries_search_filters_name_company_email_and_category(db, settings):
+    settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+    from apps.inquiries.models import Inquiry
+
+    Inquiry.objects.create(name="Alex Petrov", company="Silk Road Trade", country="UZ", email="alex@example.com", category="Valves & Pipes", specs="DN150", locale="en")
+    Inquiry.objects.create(name="Wei Li", company="Hebei Hardware", country="CN", email="wei@example.com", category="Cables", specs="RV-90", locale="zh")
+    client = Client()
+    client.cookies[ADMIN_COOKIE] = create_admin_session()
+
+    by_name = client.get("/admin/api/inquiries", {"q": "petrov"}).json()["inquiries"]
+    assert [row["name"] for row in by_name] == ["Alex Petrov"]
+    by_company = client.get("/admin/api/inquiries", {"q": "Hardware"}).json()["inquiries"]
+    assert [row["name"] for row in by_company] == ["Wei Li"]
+    by_email = client.get("/admin/api/inquiries", {"q": "wei@example.com"}).json()["inquiries"]
+    assert [row["email"] for row in by_email] == ["wei@example.com"]
+    by_category = client.get("/admin/api/inquiries", {"q": "valves"}).json()["inquiries"]
+    assert [row["category"] for row in by_category] == ["Valves & Pipes"]
+    csv_response = client.get("/admin/api/inquiries", {"q": "petrov", "format": "csv"})
+    assert b"Alex Petrov" in csv_response.content
+    assert b"Wei Li" not in csv_response.content
+
+
 def test_inquiry_rejects_huge_attachment(db, settings):
     settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
     huge = SimpleUploadedFile("spec.pdf", b"a" * (10 * 1024 * 1024 + 1), content_type="application/pdf")

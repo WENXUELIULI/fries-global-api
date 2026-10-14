@@ -12,7 +12,13 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.authx.services import ADMIN_COOKIE, valid_same_origin_request, verify_admin_session
-from apps.catalog.models import ProductCategory
+from apps.catalog.models import (
+    LOCALES,
+    SLUG_PATTERN,
+    ProductCategory,
+    localized_text,
+    pick_locale,
+)
 from apps.media.validators import IMAGE_MAX_BYTES, MediaImageError, detect_site_image
 
 
@@ -59,10 +65,13 @@ def _category_image_url(category_id: int) -> str:
     return f"/api/catalog/{category_id}/image"
 
 
-def _serialize(category: ProductCategory, *, include_admin: bool = False) -> dict:
+def _serialize(category: ProductCategory, *, include_admin: bool = False, locale: str = "en") -> dict:
+    display_locale = "en" if include_admin else locale
     item = {
         "id": category.id,
-        "title": category.title,
+        "slug": category.slug,
+        "title": localized_text(category.titles, display_locale, fallback=category.title),
+        "description": localized_text(category.descriptions, display_locale),
         "href": category.href or "#contact",
         "sortOrder": category.sort_order,
     }
@@ -71,15 +80,93 @@ def _serialize(category: ProductCategory, *, include_admin: bool = False) -> dic
     else:
         item["imageUrl"] = None
     if include_admin:
+        item["titles"] = category.titles or {}
+        item["descriptions"] = category.descriptions or {}
         item["createdAt"] = category.created_at.isoformat().replace("+00:00", "Z")
         item["updatedAt"] = category.updated_at.isoformat().replace("+00:00", "Z")
     return item
 
 
+def _titles_for_create(post) -> dict | None:
+    title_en = (post.get("title_en") or post.get("title") or "").strip()
+    title_ru = (post.get("title_ru") or "").strip()
+    if not title_en or not title_ru or len(title_en) > 120 or len(title_ru) > 120:
+        return None
+    titles = {"en": title_en, "ru": title_ru}
+    for loc in LOCALES:
+        if loc in {"en", "ru"}:
+            continue
+        extra = (post.get(f"title_{loc}") or "").strip()
+        if extra:
+            if len(extra) > 120:
+                return None
+            titles[loc] = extra
+    return titles
+
+
+def _titles_for_update(post, category: ProductCategory) -> dict | None:
+    keys = ["title", *[f"title_{loc}" for loc in LOCALES]]
+    if not any(key in post for key in keys):
+        return dict(category.titles or {})
+    merged = dict(category.titles or {})
+    if "title_en" in post or "title" in post:
+        merged["en"] = (post.get("title_en") or post.get("title") or "").strip()
+    if "title_ru" in post:
+        merged["ru"] = (post.get("title_ru") or "").strip()
+    for loc in LOCALES:
+        if loc in {"en", "ru"}:
+            continue
+        key = f"title_{loc}"
+        if key in post:
+            value = (post.get(key) or "").strip()
+            if value:
+                merged[loc] = value
+            else:
+                merged.pop(loc, None)
+    if not merged.get("en") or len(merged.get("en") or "") > 120:
+        return None
+    if not merged.get("ru"):
+        merged["ru"] = merged["en"]
+    if len(merged["ru"]) > 120:
+        return None
+    return merged
+
+
+def _descriptions_from_post(post, *, existing: dict | None = None, partial: bool = False) -> dict | None:
+    descriptions = dict(existing or {}) if partial else {}
+    for loc in LOCALES:
+        key = f"description_{loc}"
+        if partial and key not in post:
+            continue
+        value = (post.get(key) or "").strip()
+        if len(value) > 500:
+            return None
+        if value:
+            descriptions[loc] = value
+        elif partial:
+            descriptions.pop(loc, None)
+    return descriptions
+
+
+def _slug_from_post(post, *, exclude_id: int | None = None) -> tuple[str | None, bool]:
+    raw = (post.get("slug") or "").strip().lower()
+    if not raw:
+        return None, True
+    if not SLUG_PATTERN.fullmatch(raw) or len(raw) > 140:
+        return None, False
+    qs = ProductCategory.objects.filter(slug=raw)
+    if exclude_id:
+        qs = qs.exclude(pk=exclude_id)
+    if qs.exists():
+        return None, False
+    return raw, True
+
+
 @require_GET
 def public_catalog(request: HttpRequest):
+    locale = pick_locale(request.GET.get("locale"))
     categories = ProductCategory.objects.order_by("sort_order", "id")
-    payload = {"categories": [_serialize(c) for c in categories]}
+    payload = {"categories": [_serialize(c, locale=locale) for c in categories]}
     response = _json(payload)
     response["Cache-Control"] = "public, max-age=60"
     return response
@@ -116,13 +203,24 @@ def admin_catalog_collection(request: HttpRequest):
     if not valid_same_origin_request(request):
         return HttpResponse("Forbidden", status=403)
 
-    title = (request.POST.get("title") or "").strip()
+    titles = _titles_for_create(request.POST)
+    descriptions = _descriptions_from_post(request.POST)
     href = _normalize_href(request.POST.get("href") or "")
-    if not title or len(title) > 120 or href is None:
+    slug, slug_ok = _slug_from_post(request.POST)
+    if titles is None or descriptions is None or href is None or not slug_ok:
         return HttpResponseRedirect("/admin/catalog?error=invalid", status=303)
 
     max_order = ProductCategory.objects.aggregate(m=Max("sort_order"))["m"] or 0
-    category = ProductCategory.objects.create(title=title, href=href, sort_order=max_order + 1)
+    category = ProductCategory(
+        title=titles["en"],
+        href=href,
+        titles=titles,
+        descriptions=descriptions,
+        sort_order=max_order + 1,
+    )
+    if slug:
+        category.slug = slug
+    category.save()
 
     image_error = _save_uploaded_category_image(category, request)
     if image_error:
@@ -145,17 +243,34 @@ def admin_catalog_update(request: HttpRequest, category_id: int):
     except ProductCategory.DoesNotExist:
         return HttpResponse("Not found", status=404)
 
-    if "title" in request.POST:
-        title = (request.POST.get("title") or "").strip()
-        if not title or len(title) > 120:
+    titles = _titles_for_update(request.POST, category)
+    if titles is None:
+        return HttpResponseRedirect("/admin/catalog?error=invalid", status=303)
+    category.titles = titles
+    category.title = titles["en"]
+
+    if any(f"description_{loc}" in request.POST for loc in LOCALES):
+        descriptions = _descriptions_from_post(
+            request.POST,
+            existing=category.descriptions if isinstance(category.descriptions, dict) else {},
+            partial=True,
+        )
+        if descriptions is None:
             return HttpResponseRedirect("/admin/catalog?error=invalid", status=303)
-        category.title = title
+        category.descriptions = descriptions
 
     if "href" in request.POST:
         href = _normalize_href(request.POST.get("href") or "")
         if href is None:
             return HttpResponseRedirect("/admin/catalog?error=invalid", status=303)
         category.href = href
+
+    if "slug" in request.POST:
+        slug, slug_ok = _slug_from_post(request.POST, exclude_id=category.id)
+        if not slug_ok:
+            return HttpResponseRedirect("/admin/catalog?error=invalid", status=303)
+        if slug:
+            category.slug = slug
 
     image_error = _save_uploaded_category_image(category, request)
 

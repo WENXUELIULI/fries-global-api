@@ -11,6 +11,8 @@ SLOT_DEFAULTS: dict[str, str | None] = {
     "services.case_4": "/case-manufacturing.png",
     "quality.backdrop": None,  # optional; no public default — components may hide
     "cta.visual": None,  # optional; no public default — components may hide
+    "about.lobby": None,
+    "about.storefront": None,
 }
 
 SLOT_KEYS: frozenset[str] = frozenset(SLOT_DEFAULTS)

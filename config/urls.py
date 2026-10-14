@@ -20,6 +20,16 @@ from apps.authx.views import (
     site_register,
     site_avatar,
 )
+from apps.catalog.product_views import (
+    admin_product_delete,
+    admin_product_images,
+    admin_product_publish,
+    admin_product_update,
+    admin_products_collection,
+    public_product_detail,
+    public_product_image,
+    public_products,
+)
 from apps.catalog.views import (
     admin_catalog_collection,
     admin_catalog_delete,
@@ -45,6 +55,9 @@ urlpatterns = [
     path("api/ingest", IngestView.as_view()),
     path("api/engage", engage_ingest),
     path("api/catalog", public_catalog),
+    path("api/products/<slug:category_slug>/<slug:product_slug>", public_product_detail),
+    path("api/products/<int:product_id>/images/<int:image_id>", public_product_image),
+    path("api/products", public_products),
     path("api/inquiries", create_inquiry),
     path("admin/api/inquiries", admin_inquiries),
     path("api/catalog/<int:category_id>/image", public_category_image),
@@ -62,6 +75,11 @@ urlpatterns = [
     path("admin/api/session", AdminSessionView.as_view()),
     path("admin/api/summary", AdminSummaryView.as_view()),
     path("admin/api/engagement", engagement_admin_summary),
+    path("admin/api/products", admin_products_collection),
+    path("admin/api/products/<int:product_id>/publish", admin_product_publish),
+    path("admin/api/products/<int:product_id>/delete", admin_product_delete),
+    path("admin/api/products/<int:product_id>/images", admin_product_images),
+    path("admin/api/products/<int:product_id>", admin_product_update),
     path("admin/api/catalog", admin_catalog_collection),
     path("admin/api/catalog/<int:category_id>/move", admin_catalog_move),
     path("admin/api/catalog/<int:category_id>/delete", admin_catalog_delete),

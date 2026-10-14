@@ -9,6 +9,7 @@ from typing import Any
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db.models import Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
@@ -216,7 +217,16 @@ def admin_inquiries(request: HttpRequest):
     if not verify_admin_session(request.COOKIES.get(ADMIN_COOKIE)):
         return HttpResponse("Unauthorized", status=401, headers={"Cache-Control": "no-store"})
 
-    rows = list(Inquiry.objects.order_by("-created_at", "-id")[:500])
+    qs = Inquiry.objects.order_by("-created_at", "-id")
+    query = (request.GET.get("q") or "").strip()
+    if query:
+        qs = qs.filter(
+            Q(name__icontains=query)
+            | Q(company__icontains=query)
+            | Q(email__icontains=query)
+            | Q(category__icontains=query)
+        )
+    rows = list(qs[:500])
     if request.GET.get("format") == "csv":
         buffer = StringIO()
         writer = csv.writer(buffer)

@@ -26,23 +26,59 @@ def test_public_catalog_includes_configured_href(isolated_private, db):
     body = Client().get("/api/catalog").json()["categories"]
     assert body[0]["title"] == "Home"
     assert body[0]["href"] == "https://example.com/ask"
+    assert body[0]["slug"]
+
+
+def test_public_catalog_localizes_title_and_falls_back_to_english(isolated_private, db):
+    ProductCategory.objects.create(
+        title="Valves & Pipes",
+        slug="valves-pipes",
+        titles={"en": "Valves & Pipes", "ru": "Задвижки и трубы"},
+        descriptions={"en": "Steel and PE pipes", "ru": "Стальные и ПЭ трубы"},
+        href="#contact",
+        sort_order=1,
+    )
+    en = Client().get("/api/catalog", {"locale": "en"}).json()["categories"][0]
+    ru = Client().get("/api/catalog", {"locale": "ru"}).json()["categories"][0]
+    zh = Client().get("/api/catalog", {"locale": "zh"}).json()["categories"][0]
+    assert en["slug"] == "valves-pipes"
+    assert en["title"] == "Valves & Pipes"
+    assert ru["title"] == "Задвижки и трубы"
+    assert ru["description"] == "Стальные и ПЭ трубы"
+    assert zh["title"] == "Valves & Pipes"
+
+
+def test_admin_create_requires_russian_title(isolated_private, db):
+    client = _admin_client()
+    response = client.post("/admin/api/catalog", data={"title_en": "Parts"}, **ORIGIN)
+    assert response.status_code == 303
+    assert "error=invalid" in response["Location"]
+    assert ProductCategory.objects.filter(title="Parts").count() == 0
 
 
 def test_admin_create_defaults_href_to_contact(isolated_private, db):
     client = _admin_client()
-    response = client.post("/admin/api/catalog", data={"title": "Parts"}, **ORIGIN)
+    response = client.post(
+        "/admin/api/catalog",
+        data={"title_en": "Parts", "title_ru": "Запчасти"},
+        **ORIGIN,
+    )
     assert response.status_code == 303
     category = ProductCategory.objects.get(title="Parts")
     assert category.href == "#contact"
+    assert category.slug == "parts"
+    assert category.titles["en"] == "Parts"
+    assert category.titles["ru"] == "Запчасти"
     listed = client.get("/admin/api/catalog").json()["categories"]
     assert listed[0]["href"] == "#contact"
+    assert listed[0]["slug"] == "parts"
 
 
 def test_admin_create_saves_custom_href(isolated_private, db):
     client = _admin_client()
     response = client.post(
         "/admin/api/catalog",
-        data={"title": "Beauty", "href": "https://wa.me/8613800138000"},
+        data={"title_en": "Beauty", "title_ru": "Красота", "href": "https://wa.me/8613800138000"},
         **ORIGIN,
     )
     assert response.status_code == 303
@@ -53,7 +89,7 @@ def test_admin_rejects_javascript_href(isolated_private, db):
     client = _admin_client()
     response = client.post(
         "/admin/api/catalog",
-        data={"title": "Bad", "href": "javascript:alert(1)"},
+        data={"title_en": "Bad", "title_ru": "Плохо", "href": "javascript:alert(1)"},
         **ORIGIN,
     )
     assert response.status_code == 303
@@ -83,7 +119,7 @@ def test_admin_create_keeps_category_when_image_too_large(isolated_private, db):
     )
     response = client.post(
         "/admin/api/catalog",
-        data={"title": "Kept", "href": "#contact", "image": huge},
+        data={"title_en": "Kept", "title_ru": "Сохранено", "href": "#contact", "image": huge},
         **ORIGIN,
     )
     assert response.status_code == 303
@@ -98,7 +134,7 @@ def test_admin_create_ignores_empty_image(isolated_private, db):
     empty = SimpleUploadedFile("empty.png", b"", content_type="image/png")
     response = client.post(
         "/admin/api/catalog",
-        data={"title": "NoPic", "href": "#contact", "image": empty},
+        data={"title_en": "NoPic", "title_ru": "Без фото", "href": "#contact", "image": empty},
         **ORIGIN,
     )
     assert response.status_code == 303
