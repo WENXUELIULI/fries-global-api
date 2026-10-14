@@ -36,6 +36,7 @@ from apps.media.views import (
     public_site_image,
     public_site_images_list,
 )
+from apps.inquiries.views import admin_inquiries, create_inquiry
 from config.views import health
 
 urlpatterns = [
@@ -44,6 +45,8 @@ urlpatterns = [
     path("api/ingest", IngestView.as_view()),
     path("api/engage", engage_ingest),
     path("api/catalog", public_catalog),
+    path("api/inquiries", create_inquiry),
+    path("admin/api/inquiries", admin_inquiries),
     path("api/catalog/<int:category_id>/image", public_category_image),
     path("api/site-images", public_site_images_list),
     path("api/site-images/<str:slot_key>", public_site_image),
